@@ -18,6 +18,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), Error> {
+    #[allow(unused_mut)]
     let mut action: fn(Crevette) -> _ = |c| c.convert_into_repo();
     match std::env::args().nth(1).as_deref() {
         Some("--help") => {
