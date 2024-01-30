@@ -21,7 +21,7 @@ fn run() -> Result<(), Error> {
     #[allow(unused_mut)]
     let mut action: fn(Crevette) -> _ = |c| c.convert_into_repo();
     match std::env::args().nth(1).as_deref() {
-        Some("--help") => {
+        Some("--help" | "-h" | "--version" | "-V") => {
             eprintln!("https://lib.rs/crevette {}
 Run without args to update your crev repo.
 Run with --debcargo to make a vet file from Debian package list.
