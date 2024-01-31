@@ -188,7 +188,7 @@ impl Crevette {
             let distros = if distros.is_empty() { "unreleased" } else { &distros };
 
             audits.entry(d.name).or_insert_with(Vec::new).push(vet::AuditEntry {
-                criteria: vec!["safe-to-run", "safe-to-deploy"],
+                criteria: vec!["safe-to-run"],
                 aggregated_from: vec![index_debcargo::DEBCARGO_CONF_REPO_URL.to_string()],
                 notes: Some(format!("Packaged for Debian ({distros}). Changelog:\n{}", d.changelog)),
                 delta: None,
