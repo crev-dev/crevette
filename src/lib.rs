@@ -8,7 +8,8 @@ use crev_wot::TrustSet;
 use crev_wot::{PkgVersionReviewId, TrustDistanceParams};
 use std::collections::{BTreeMap, HashMap};
 use std::io;
-use std::path::PathBuf;
+#[allow(unused)]
+use std::path::{Path, PathBuf};
 
 pub mod vet;
 
@@ -129,46 +130,59 @@ impl Crevette {
     }
 
     #[cfg(feature = "debcargo")]
-    pub fn convert_debcargo_repo(&self, temp_dir_path: &std::path::Path) -> Result<RepoInfo, Error> {
+    pub fn convert_debcargo_repo(&self, temp_dir_path: &Path) -> Result<RepoInfo, Error> {
         self.save_toml_to_repo(Self::from_debcargo_repo(temp_dir_path)?, "debian.toml")
     }
 
     #[cfg(feature = "debcargo")]
-    pub fn from_debcargo_repo(temp_dir_path: &std::path::Path) -> Result<String, Error> {
+    pub fn from_debcargo_repo(temp_dir_path: &Path) -> Result<String, Error> {
+        use vet::CriteriaEntry;
+
         let _ = std::fs::create_dir_all(&temp_dir_path);
 
         let deb_err = |e: index_debcargo::Error| Error::ErrorIteratingLocalProofStore(Box::new((temp_dir_path.into(), e.to_string())));
         let mut d = index_debcargo::Index::new(temp_dir_path).map_err(deb_err)?;
 
-        let sources_file = temp_dir_path.join("Sources.gz");
-        if !sources_file.exists() {
-            let sources_file_tmp = temp_dir_path.join("Sources.gz.tmp");
-            let sources_url = "https://deb.debian.org/debian/dists/stable/main/source/Sources.gz";
-            let mut out = std::fs::File::create(&sources_file_tmp)?;
-            let dl_err = |e| Error::IO(io::Error::new(io::ErrorKind::Other, format!("Can't download {sources_url}: {e}")));
-            let mut response = match reqwest::blocking::get(sources_url) {
-                Ok(r) => r,
-                Err(e) => return Err(dl_err(e)),
-            };
-            response.copy_to(&mut out).map_err(dl_err)?;
-            std::fs::rename(&sources_file_tmp, &sources_file)?;
-        }
-        let sources_gzipped = std::fs::File::open(&sources_file)?;
-        let sources = flate2::read::GzDecoder::new(sources_gzipped);
-
-        d.add_distro_source("stable", io::BufReader::new(sources)).map_err(deb_err)?;
+        let sources = Self::add_debian_source(&temp_dir_path.join("Sources.gz"), "https://deb.debian.org/debian/dists/stable/main/source/Sources.gz")?;
+        d.add_distro_source("stable", sources).map_err(deb_err)?;
+        let sources = Self::add_debian_source(&temp_dir_path.join("Sources.gz"), "https://deb.debian.org/debian/dists/oldstable/main/source/Sources.gz")?;
+        d.add_distro_source("oldstable", sources).map_err(deb_err)?;
+        let sources = Self::add_debian_source(&temp_dir_path.join("Sources.gz"), "https://deb.debian.org/debian/dists/testing/main/source/Sources.gz")?;
+        d.add_distro_source("testing", sources).map_err(deb_err)?;
 
         let debs = d.list_all().map_err(deb_err)?;
 
         let mut audits = BTreeMap::new();
         for d in debs {
-            let distros = d.distros.join(", ");
-            let distros = if distros.is_empty() { "unreleased" } else { &distros };
-
+            if d.distros.is_empty() {
+                // ignore unreleased
+                continue;
+            }
+            let is_in_stable = d.distros.iter().any(|d| d == "stable");
+            let is_in_oldstable = d.distros.iter().any(|d| d == "oldstable");
+            let stable_or_testing = is_in_stable || d.distros.iter().any(|d| d == "testing");
+            let title = if stable_or_testing || is_in_oldstable {
+                "Packaged for Debian"
+            } else {
+                "Only in debcargo"
+            };
+            let mut criteria = vec![];
+            if stable_or_testing || is_in_oldstable {
+                criteria.push("safe-to-run");
+            } else {
+                criteria.push("unknown");
+            }
+            let distros = if is_in_stable {
+                "stable".into()
+            } else if stable_or_testing {
+                "testing".into()
+            } else {
+                d.distros.join(",")
+            };
             audits.entry(d.name).or_insert_with(Vec::new).push(vet::AuditEntry {
-                criteria: vec!["safe-to-run"],
+                criteria,
                 aggregated_from: vec![index_debcargo::DEBCARGO_CONF_REPO_URL.to_string()],
-                notes: Some(format!("Packaged for Debian ({distros}). Changelog:\n{}", d.changelog)),
+                notes: Some(format!("{title} ({distros}). Changelog:\n{}", d.changelog)),
                 delta: None,
                 version: Some(d.version),
                 violation: None,
@@ -176,9 +190,13 @@ impl Crevette {
             });
         }
 
-
         let audits = vet::AuditsFile {
-            criteria: Default::default(),
+            criteria: [("unknown", CriteriaEntry {
+                description: Some("Only in debcargo, unreleased"),
+                implies: vec![],
+                aggregated_from: vec![],
+
+            })].into_iter().collect(),
             audits,
         };
 
@@ -191,12 +209,12 @@ impl Crevette {
     }
 
     #[cfg(feature = "guix")]
-    pub fn convert_guix_repo(&self, temp_dir_path: &std::path::Path) -> Result<RepoInfo, Error> {
+    pub fn convert_guix_repo(&self, temp_dir_path: &Path) -> Result<RepoInfo, Error> {
         self.save_toml_to_repo(Self::from_guix_repo(temp_dir_path)?, "guix.toml")
     }
 
     #[cfg(feature = "guix")]
-    pub fn from_guix_repo(temp_dir_path: &std::path::Path) -> Result<String, Error> {
+    pub fn from_guix_repo(temp_dir_path: &Path) -> Result<String, Error> {
         let _ = std::fs::create_dir_all(&temp_dir_path);
 
         let g_err = |e: index_guix::Error| Error::ErrorIteratingLocalProofStore(Box::new((temp_dir_path.into(), e.to_string())));
@@ -415,6 +433,24 @@ impl Crevette {
         } else {
             pkg.id.version.to_string()
         }
+    }
+
+    #[cfg(feature = "debcargo")]
+    fn add_debian_source(sources_file: &Path, sources_url: &str) -> Result<impl io::BufRead, Error> {
+        if !sources_file.exists() {
+            let sources_file_tmp = sources_file.with_extension("gz.tmp");
+            let mut out = std::fs::File::create(&sources_file_tmp)?;
+            let dl_err = |e| Error::IO(io::Error::new(io::ErrorKind::Other, format!("Can't download {sources_url}: {e}")));
+            let mut response = match reqwest::blocking::get(sources_url) {
+                Ok(r) => r,
+                Err(e) => return Err(dl_err(e)),
+            };
+            response.copy_to(&mut out).map_err(dl_err)?;
+            std::fs::rename(&sources_file_tmp, &sources_file)?;
+        }
+        let sources_gzipped = io::BufReader::new(std::fs::File::open(&sources_file)?);
+        let sources = io::BufReader::new(flate2::bufread::GzDecoder::new(sources_gzipped));
+        Ok(sources)
     }
 }
 
