@@ -161,29 +161,7 @@ impl Crevette {
         let debs = d.list_all().map_err(deb_err)?;
 
         let mut audits = BTreeMap::new();
-        let mut seen = std::collections::HashSet::new();
         for d in debs {
-            let mut who = vec![];
-            seen.clear();
-            if let Some(email) = d.maintainer_email {
-                who.push(format!("\"{}\" <{email}>", d.maintainer_name.as_deref().unwrap_or_default()));
-                seen.insert(email);
-                if let Some(name) = d.maintainer_name {
-                    seen.insert(name);
-                }
-            }
-            for a in &d.uploaders {
-                let a = cargo_author::Author::new(a);
-                if let Some(email) = a.email {
-                    let uploader = format!("\"{}\" <{email}>", a.name.as_deref().unwrap_or_default());
-                    if let Some(name) = a.name {
-                        if !seen.insert(name) { continue; }
-                    }
-                    if !seen.insert(email) { continue; }
-                    who.push(uploader);
-                }
-            }
-
             let distros = d.distros.join(", ");
             let distros = if distros.is_empty() { "unreleased" } else { &distros };
 
@@ -194,7 +172,7 @@ impl Crevette {
                 delta: None,
                 version: Some(d.version),
                 violation: None,
-                who: vet::StringOrVec::Vec(who),
+                who: vet::StringOrVec::Vec(vec![]),
             });
         }
 
