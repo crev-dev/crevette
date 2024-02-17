@@ -191,8 +191,8 @@ impl Crevette {
         }
 
         let audits = vet::AuditsFile {
-            criteria: [("unknown", CriteriaEntry {
-                description: Some("Only in debcargo, unreleased"),
+            criteria: [("unknown", vet::CriteriaEntry {
+                description: Some("May have been packaged automatically without a review"),
                 implies: vec![],
                 aggregated_from: vec![],
 
@@ -226,7 +226,7 @@ impl Crevette {
         for (category, packages) in all {
             for p in packages {
                 audits.entry(p.name).or_insert_with(Vec::new).push(vet::AuditEntry {
-                    criteria: vec!["safe-to-run"],
+                    criteria: vec!["unknown"],
                     aggregated_from: vec![index_guix::GUIX_REPO_URL.to_string()],
                     notes: Some(format!("Packaged for Guix ({category})")),
                     delta: None,
@@ -238,7 +238,12 @@ impl Crevette {
         }
 
         let audits = vet::AuditsFile {
-            criteria: Default::default(),
+            criteria: [("unknown", vet::CriteriaEntry {
+                description: Some("May have been packaged automatically without a review"),
+                implies: vec![],
+                aggregated_from: vec![],
+            })].into_iter().collect(),
+
             audits,
         };
 
