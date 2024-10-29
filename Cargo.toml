@@ -8,21 +8,21 @@ edition = "2021"
 license = "MPL-2.0 OR MIT OR Apache-2.0"
 repository = "https://github.com/crev-dev/crevette"
 rust-version = "1.73"
-version = "0.25.7"
+version = "0.25.9"
 readme = "README.md"
 include = ["src/*.rs", "Cargo.toml", "README.md", "LICENSE-MIT"]
 
 [dependencies]
-crev-lib = "0.25"
-crev-data = "0.25"
-crev-wot = "0.25"
+crev-lib = "0.25.4"
+crev-data = "0.25.9"
+crev-wot = "0.25.9"
 semver = "1.0.20"
 serde = "1.0.193"
 directories-next = "2.0.0"
 toml_edit = { version = "0.22.0", features = ["serde"] }
 cargo_author = { version = "1.0.6", optional = true }
 flate2 = { version = "1.0.28", optional = true }
-index-debcargo = { version = "1.1.1", optional = true }
+index-debcargo = { version = "2.0", optional = true }
 index-guix = { version = "1.0.0", optional = true }
 reqwest = { version = "0.12", features = ["blocking"], optional = true }
 
@@ -34,5 +34,5 @@ guix = ["dep:index-guix"]
 
 [profile.dev.package]
 sha1_smol.opt-level = 3
-adler.opt-level = 3
+adler2.opt-level = 3
 miniz_oxide.opt-level = 3

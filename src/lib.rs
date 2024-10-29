@@ -136,8 +136,6 @@ impl Crevette {
 
     #[cfg(feature = "debcargo")]
     pub fn from_debcargo_repo(temp_dir_path: &Path) -> Result<String, Error> {
-        use vet::CriteriaEntry;
-
         let _ = std::fs::create_dir_all(&temp_dir_path);
 
         let deb_err = |e: index_debcargo::Error| Error::ErrorIteratingLocalProofStore(Box::new((temp_dir_path.into(), e.to_string())));
@@ -150,10 +148,17 @@ impl Crevette {
         let sources = Self::add_debian_source(&temp_dir_path.join("Sources.gz"), "https://deb.debian.org/debian/dists/testing/main/source/Sources.gz")?;
         d.add_distro_source("testing", sources).map_err(deb_err)?;
 
-        let debs = d.list_all().map_err(deb_err)?;
+        let debs = d.list_all();
 
         let mut audits = BTreeMap::new();
         for d in debs {
+            let d = match d {
+                Ok(d) => d,
+                Err(e) => {
+                    eprintln!("{e}");
+                    continue;
+                },
+            };
             if d.distros.is_empty() {
                 // ignore unreleased
                 continue;
