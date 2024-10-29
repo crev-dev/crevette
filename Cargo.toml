@@ -10,7 +10,7 @@ repository = "https://github.com/crev-dev/crevette"
 rust-version = "1.73"
 version = "0.25.9"
 readme = "README.md"
-include = ["src/*.rs", "Cargo.toml", "README.md", "LICENSE-MIT"]
+include = ["src/*.rs", "src/*/*.rs", "Cargo.toml", "README.md", "LICENSE-MIT"]
 
 [dependencies]
 crev-lib = "0.25.4"
