@@ -61,8 +61,7 @@ fn run() -> Result<(), Error> {
         }
     }
     if actions.is_empty() {
-        show_help();
-        return Ok(());
+        actions.push(|c| c.convert_into_repo());
     }
 
     let c = Crevette::new()?;
