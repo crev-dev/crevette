@@ -8,14 +8,14 @@ edition = "2021"
 license = "MPL-2.0 OR MIT OR Apache-2.0"
 repository = "https://github.com/crev-dev/crevette"
 rust-version = "1.73"
-version = "0.25.9"
+version = "0.26.0"
 readme = "README.md"
 include = ["src/*.rs", "src/*/*.rs", "Cargo.toml", "README.md", "LICENSE-MIT"]
 
 [dependencies]
-crev-lib = "0.25.4"
-crev-data = "0.25.9"
-crev-wot = "0.25.9"
+crev-lib = "0.26"
+crev-data = "0.26"
+crev-wot = "0.26"
 semver = "1.0.20"
 serde = "1.0.193"
 directories-next = "2.0.0"
